@@ -138,17 +138,33 @@
     setInterval(refreshWiFi, 1800000);
   }
 
-  var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
+    var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
     try {
       var res = await fetch('https://open-meteo.com' + userLat + '&longitude=' + userLon + '&current=temperature_2m,weather_code&temperature_unit=fahrenheit');
+      if (!res.ok) throw new Error('OM ' + res.status);
       var data = await res.json();
       if (data && data.current) {
         document.getElementById('temp').textContent = Math.round(data.current.temperature_2m) + '°F';
         document.getElementById('weather-desc').textContent = wmoCodes[data.current.weather_code] || 'Local Conditions';
+        return;
       }
-    } catch (e) { document.getElementById('weather-desc').textContent = 'Weather offline'; }
+    } catch (e) {
+      try {
+        var res2 = await fetch('https://wttr.in' + userLat.toFixed(3) + ',' + userLon.toFixed(3) + '?format=j1');
+        var d2 = await res2.json();
+        var cur = d2 && d2.current_condition && d2.current_condition.shift();
+        if (cur) {
+          document.getElementById('temp').textContent = cur.temp_F + '°F';
+          document.getElementById('weather-desc').textContent = (cur.weatherDesc && cur.weatherDesc.shift().value) || 'Local';
+          return;
+        }
+      } catch (e2) {
+        document.getElementById('weather-desc').textContent = 'Wx Err: ' + (e.message || 'Blocked');
+      }
+    }
   }
+
 
   function getDistanceNM(lat1, lon1, lat2, lon2) {
     var R = 3440.065, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
@@ -239,9 +255,27 @@
   }
 
   async function fetchFlights() {
+    var endpoints = [
+      'https://adsb.lol' + userLat + '/' + userLon + '/' + RADIUS_NM,
+      'https://airplanes.live' + userLat + '/' + userLon + '/' + RADIUS_NM
+    ];
+    var data = null, lastErr = '';
+    for (var i = 0; i < endpoints.length; i++) {
+      try {
+        var res = await fetch(endpoints[i]);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+        if (data && data.ac) break;
+      } catch (err) {
+        lastErr = err.message || 'Network/CORS blocked';
+      }
+    }
+    if (!data || !data.ac) {
+      document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr;
+      return;
+    }
     try {
-      var res = await fetch('https://adsb.lol' + userLat + '/' + userLon + '/' + RADIUS_NM);
-      var data = await res.json(), rawList = data.ac || [];
+      var rawList = data.ac || [];
       var airborne = rawList.filter(function(ac) { return ac.lat && ac.lon && ac.alt_baro !== 'ground'; })
         .map(function(ac) {
           return {
@@ -269,8 +303,9 @@
       if (current) { activeHeroHex = current.hex; routeCache[current.hex] = current; }
       renderHero(current);
       renderTable(pastFlights, current, nextThree);
-    } catch (e) { document.getElementById('hero-airline').textContent = 'Retrying ADS-B feed...'; }
+    } catch (e) { document.getElementById('hero-airline').textContent = 'Parse Err: ' + e.message; }
   }
+
 
   function renderHero(ac) {
     var vrateEl = document.getElementById('hero-vrate'), squawkEl = document.getElementById('hero-squawk');
