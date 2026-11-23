@@ -138,30 +138,32 @@
     setInterval(refreshWiFi, 1800000);
   }
 
-    var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
+  var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
+    var url1 = 'https://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit';
     try {
-      var res = await fetch('https://open-meteo.com' + userLat + '&longitude=' + userLon + '&current=temperature_2m,weather_code&temperature_unit=fahrenheit');
-      if (!res.ok) throw new Error('OM ' + res.status);
+      var res = await fetch(url1);
       var data = await res.json();
-      if (data && data.current) {
-        document.getElementById('temp').textContent = Math.round(data.current.temperature_2m) + '°F';
-        document.getElementById('weather-desc').textContent = wmoCodes[data.current.weather_code] || 'Local Conditions';
+      if (data && data.current_weather) {
+        document.getElementById('temp').textContent = Math.round(data.current_weather.temperature) + '°F';
+        document.getElementById('weather-desc').textContent = wmoCodes[data.current_weather.weathercode] || 'Local Conditions';
         return;
       }
-    } catch (e) {
-      try {
-        var res2 = await fetch('https://wttr.in' + userLat.toFixed(3) + ',' + userLon.toFixed(3) + '?format=j1');
-        var d2 = await res2.json();
-        var cur = d2 && d2.current_condition && d2.current_condition.shift();
-        if (cur) {
-          document.getElementById('temp').textContent = cur.temp_F + '°F';
-          document.getElementById('weather-desc').textContent = (cur.weatherDesc && cur.weatherDesc.shift().value) || 'Local';
-          return;
-        }
-      } catch (e2) {
-        document.getElementById('weather-desc').textContent = 'Wx Err: ' + (e.message || 'Blocked');
+    } catch (e) {}
+
+    try {
+      var url2 = 'https://weather.gov' + userLat.toFixed(4) + ',' + userLon.toFixed(4);
+      var pRes = await fetch(url2);
+      var pData = await pRes.json();
+      var fRes = await fetch(pData.properties.forecastHourly);
+      var fData = await fRes.json();
+      var cur = fData.properties.periods.shift();
+      if (cur) {
+        document.getElementById('temp').textContent = cur.temperature + '°' + cur.temperatureUnit;
+        document.getElementById('weather-desc').textContent = cur.shortForecast;
       }
+    } catch (e2) {
+      document.getElementById('weather-desc').textContent = 'Wx: ' + (e2.message || 'Offline');
     }
   }
 
@@ -255,25 +257,31 @@
   }
 
   async function fetchFlights() {
-    var endpoints = [
-      'https://adsb.lol' + userLat + '/' + userLon + '/' + RADIUS_NM,
-      'https://airplanes.live' + userLat + '/' + userLon + '/' + RADIUS_NM
-    ];
+    var coords = userLat.toFixed(4) + '/' + userLon.toFixed(4) + '/' + RADIUS_NM;
+    var urlA = 'https://adsb.lol' + coords;
+    var urlB = 'https://airplanes.live' + coords;
     var data = null, lastErr = '';
-    for (var i = 0; i < endpoints.length; i++) {
+
+    try {
+      var resA = await fetch(urlA);
+      if (!resA.ok) throw new Error('HTTP ' + resA.status);
+      data = await resA.json();
+    } catch (errA) {
+      lastErr = errA.message || 'A failed';
       try {
-        var res = await fetch(endpoints[i]);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        data = await res.json();
-        if (data && data.ac) break;
-      } catch (err) {
-        lastErr = err.message || 'Network/CORS blocked';
+        var resB = await fetch(urlB);
+        if (!resB.ok) throw new Error('HTTP ' + resB.status);
+        data = await resB.json();
+      } catch (errB) {
+        lastErr = errB.message || 'B failed';
       }
     }
+
     if (!data || !data.ac) {
       document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr;
       return;
     }
+
     try {
       var rawList = data.ac || [];
       var airborne = rawList.filter(function(ac) { return ac.lat && ac.lon && ac.alt_baro !== 'ground'; })
