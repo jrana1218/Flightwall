@@ -102,6 +102,7 @@
   </div>
 </div>
 <script>
+  var P = 'https:' + '//';
   var userLat = 37.9535, userLon = -122.0675, wifiLocked = false, RADIUS_NM = 15;
   var routeCache = {}, photoCache = {}, pastFlights = [], activeHeroHex = null;
   try {
@@ -138,38 +139,16 @@
     setInterval(refreshWiFi, 1800000);
   }
 
-    var P = 'https:' + '//';
   var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
-    var url1 = P + '://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit';
     try {
-      var res = await fetch(url1);
+      var res = await fetch(P + '://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit');
       var data = await res.json();
       if (data && data.current_weather) {
         document.getElementById('temp').textContent = Math.round(data.current_weather.temperature) + '°F';
         document.getElementById('weather-desc').textContent = wmoCodes[data.current_weather.weathercode] || 'Local Conditions';
-        return;
       }
-    } catch (e) {
-      document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline');
-    }
-  }
-
-
-    try {
-      var url2 = 'https://weather.gov' + userLat.toFixed(4) + ',' + userLon.toFixed(4);
-      var pRes = await fetch(url2);
-      var pData = await pRes.json();
-      var fRes = await fetch(pData.properties.forecastHourly);
-      var fData = await fRes.json();
-      var cur = fData.properties.periods.shift();
-      if (cur) {
-        document.getElementById('temp').textContent = cur.temperature + '°' + cur.temperatureUnit;
-        document.getElementById('weather-desc').textContent = cur.shortForecast;
-      }
-    } catch (e2) {
-      document.getElementById('weather-desc').textContent = 'Wx: ' + (e2.message || 'Offline');
-    }
+    } catch (e) { document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline'); }
   }
 
   function getDistanceNM(lat1, lon1, lat2, lon2) {
@@ -211,7 +190,6 @@
     routeCache[cacheKey] = info;
     return info;
   }
-
   async function updateHeroPhoto(hex) {
     var imgEl = document.getElementById('plane-photo'), placeholder = document.getElementById('photo-placeholder'), credit = document.getElementById('photo-credit');
     if (photoCache[hex] !== undefined) { applyPhoto(photoCache[hex]); return; }
@@ -247,32 +225,36 @@
     }
   }
 
+  function updateProgressBar(ac) {
+    var fill = document.getElementById('progress-fill'), plane = document.getElementById('progress-plane');
+    var elapsedEl = document.getElementById('progress-elapsed'), pctEl = document.getElementById('progress-pct'), remEl = document.getElementById('progress-rem');
+    if (ac && ac.origLat !== null && ac.destLat !== null && ac.lat && ac.lon) {
+      var flown = getDistanceNM(ac.origLat, ac.origLon, ac.lat, ac.lon);
+      var remaining = getDistanceNM(ac.lat, ac.lon, ac.destLat, ac.destLon);
+      var total = flown + remaining, pct = total > 0 ? Math.min(100, Math.max(0, (flown / total) * 100)) : 50;
+      fill.style.width = pct.toFixed(1) + '%'; plane.style.left = pct.toFixed(1) + '%';
+      elapsedEl.textContent = Math.round(flown).toLocaleString() + ' NM'; pctEl.textContent = Math.round(pct) + '%'; remEl.textContent = Math.round(remaining).toLocaleString() + ' NM';
+    } else {
+      fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
+    }
+  }
+
   async function fetchFlights() {
     var coords = userLat.toFixed(4) + '/' + userLon.toFixed(4) + '/' + RADIUS_NM;
-    var urlA = P + 'api.adsb.lol/v2/point/' + coords;
-    var urlB = P + 'api.airplanes.live/v2/point/' + coords;
     var data = null, lastErr = '';
-
     try {
-      var resA = await fetch(urlA);
+      var resA = await fetch(P + 'api.adsb.lol/v2/point/' + coords);
       if (!resA.ok) throw new Error('HTTP ' + resA.status);
       data = await resA.json();
     } catch (errA) {
       lastErr = errA.message || 'A failed';
       try {
-        var resB = await fetch(urlB);
+        var resB = await fetch(P + 'api.airplanes.live/v2/point/' + coords);
         if (!resB.ok) throw new Error('HTTP ' + resB.status);
         data = await resB.json();
-      } catch (errB) {
-        lastErr = errB.message || 'B failed';
-      }
+      } catch (errB) { lastErr = errB.message || 'B failed'; }
     }
-
-    if (!data || !data.ac) {
-      document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr;
-      return;
-    }
-
+    if (!data || !data.ac) { document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr; return; }
     try {
       var rawList = data.ac || [];
       var airborne = rawList.filter(function(ac) { return ac.lat && ac.lon && ac.alt_baro !== 'ground'; })
@@ -304,22 +286,6 @@
       renderTable(pastFlights, current, nextThree);
     } catch (e) { document.getElementById('hero-airline').textContent = 'Parse Err: ' + e.message; }
   }
-
-
-  function updateProgressBar(ac) {
-    var fill = document.getElementById('progress-fill'), plane = document.getElementById('progress-plane');
-    var elapsedEl = document.getElementById('progress-elapsed'), pctEl = document.getElementById('progress-pct'), remEl = document.getElementById('progress-rem');
-    if (ac && ac.origLat !== null && ac.destLat !== null && ac.lat && ac.lon) {
-      var flown = getDistanceNM(ac.origLat, ac.origLon, ac.lat, ac.lon);
-      var remaining = getDistanceNM(ac.lat, ac.lon, ac.destLat, ac.destLon);
-      var total = flown + remaining, pct = total > 0 ? Math.min(100, Math.max(0, (flown / total) * 100)) : 50;
-      fill.style.width = pct.toFixed(1) + '%'; plane.style.left = pct.toFixed(1) + '%';
-      elapsedEl.textContent = Math.round(flown).toLocaleString() + ' NM'; pctEl.textContent = Math.round(pct) + '%'; remEl.textContent = Math.round(remaining).toLocaleString() + ' NM';
-    } else {
-      fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
-    }
-  }
-
 
   function renderHero(ac) {
     var vrateEl = document.getElementById('hero-vrate'), squawkEl = document.getElementById('hero-squawk');
