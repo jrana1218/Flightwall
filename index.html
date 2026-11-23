@@ -37,21 +37,20 @@
       overflow: hidden;
     }
 
-    /* 4:3 Landscape Grid */
     .dashboard {
       display: grid;
-      grid-template-rows: 16% 48% 36%;
-      gap: 14px;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
       width: 100vw;
       height: 100vh;
-      padding: 16px 20px;
+      padding: 14px 18px;
     }
 
     .card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 14px 22px;
+      padding: 12px 20px;
     }
 
     /* TOP ROW: Clock & Weather */
@@ -64,11 +63,11 @@
     .clock-group {
       display: flex;
       align-items: baseline;
-      gap: 16px;
+      gap: 14px;
     }
 
     #clock {
-      font-size: 3.4rem;
+      font-size: 3.1rem;
       font-weight: 700;
       letter-spacing: -1.5px;
       font-variant-numeric: tabular-nums;
@@ -76,7 +75,7 @@
     }
 
     #date {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 500;
       color: var(--muted);
     }
@@ -84,12 +83,12 @@
     .weather-group {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 18px;
       text-align: right;
     }
 
     #temp {
-      font-size: 2.7rem;
+      font-size: 2.5rem;
       font-weight: 700;
       color: var(--amber);
       font-variant-numeric: tabular-nums;
@@ -98,16 +97,16 @@
     .weather-meta {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     #weather-desc {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 600;
     }
 
     #loc-status {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: var(--muted);
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     }
@@ -115,10 +114,10 @@
     /* MIDDLE ROW: Closest Overhead Flight */
     .hero-flight {
       display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 20px;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 18px;
       align-items: center;
-      position: relative;
+      min-height: 0;
     }
 
     .hero-left {
@@ -135,8 +134,8 @@
     }
 
     .logo-box {
-      width: 58px;
-      height: 58px;
+      width: 54px;
+      height: 54px;
       border-radius: 12px;
       background: #161b22;
       border: 1px solid var(--border);
@@ -148,32 +147,31 @@
     }
 
     .logo-box img {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       object-fit: contain;
     }
 
     .logo-fallback {
       font-weight: 800;
-      font-size: 1.15rem;
+      font-size: 1rem;
       color: var(--amber);
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
     }
 
     .callsign-block h1 {
-      font-size: 2.2rem;
+      font-size: 2.1rem;
       font-weight: 800;
       letter-spacing: 0.5px;
       line-height: 1.1;
     }
 
     .callsign-block p {
-      font-size: 1rem;
+      font-size: 0.98rem;
       color: var(--muted);
       margin-top: 2px;
     }
 
-    /* Route & Progress Bar */
     .route-section {
       display: flex;
       flex-direction: column;
@@ -185,11 +183,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 14px;
     }
 
     .airport-code {
-      font-size: 3rem;
+      font-size: 2.8rem;
       font-weight: 800;
       letter-spacing: 2px;
       color: #ffffff;
@@ -201,7 +199,7 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
-      padding: 0 8px;
+      padding: 0 6px;
     }
 
     .progress-track {
@@ -225,7 +223,7 @@
       top: 50%;
       left: 0%;
       transform: translate(-50%, -50%);
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       color: var(--amber);
       text-shadow: 0 0 8px rgba(0,0,0,0.9);
       transition: left 0.6s ease;
@@ -239,7 +237,6 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* 6-Cell Telemetry Strip */
     .telemetry-strip {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
@@ -247,12 +244,12 @@
       background: #07090c;
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 9px 12px;
+      padding: 8px 12px;
     }
 
     .tele-item span {
       display: block;
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: var(--muted);
@@ -260,7 +257,7 @@
     }
 
     .tele-item strong {
-      font-size: 1.08rem;
+      font-size: 1.02rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       color: var(--blue);
@@ -293,9 +290,9 @@
 
     #photo-placeholder {
       color: var(--muted);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       text-align: center;
-      padding: 20px;
+      padding: 16px;
     }
 
     #photo-credit {
@@ -311,9 +308,6 @@
 
     /* BOTTOM ROW: Last 3 / Current / Next 3 Table */
     .queue-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       overflow: hidden;
     }
 
@@ -325,17 +319,17 @@
 
     th {
       text-align: left;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.1px;
       color: var(--muted);
-      padding-bottom: 6px;
+      padding-bottom: 5px;
       border-bottom: 1px solid var(--border);
     }
 
     td {
-      padding: 6px 4px;
-      font-size: 0.98rem;
+      padding: 5px 4px;
+      font-size: 0.92rem;
       border-bottom: 1px solid #131720;
       white-space: nowrap;
       overflow: hidden;
@@ -360,9 +354,9 @@
 
     .badge {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 6px;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -385,7 +379,7 @@
     <div class="weather-group">
       <div class="weather-meta">
         <div id="weather-desc">Loading weather...</div>
-        <div id="loc-status">Locating Wi-Fi...</div>
+        <div id="loc-status">Starting...</div>
       </div>
       <div id="temp">--°</div>
     </div>
@@ -396,7 +390,7 @@
     <div class="hero-left">
       <div class="operator-header">
         <div class="logo-box" id="logo-container">
-          <span class="logo-fallback" id="logo-fallback">ADS-B</span>
+          <span class="logo-fallback" id="logo-fallback">ADSB</span>
           <img id="operator-logo" alt="" style="display:none;" />
         </div>
         <div class="callsign-block">
@@ -405,7 +399,6 @@
         </div>
       </div>
 
-      <!-- Route + Live Progress Bar -->
       <div class="route-section">
         <div class="route-banner">
           <div class="airport-code" id="hero-origin">---</div>
@@ -424,7 +417,18 @@
         </div>
       </div>
 
-      <!-- 6-Metric Telemetry Strip -->
       <div class="telemetry-strip">
         <div class="tele-item">
           <span>Aircraft</span>
+          <strong id="hero-type">---</strong>
+        </div>
+        <div class="tele-item">
+          <span>Altitude</span>
+          <strong id="hero-alt">---</strong>
+        </div>
+        <div class="tele-item">
+          <span>Vert Rate</span>
+          <strong id="hero-vrate">---</strong>
+        </div>
+        <div class="tele-item">
+          <span>Speed</span>
