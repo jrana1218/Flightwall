@@ -103,6 +103,7 @@
 </div>
 <script>
   var P = 'https:' + '//';
+  function mkUrl(parts, path) { return P + parts.join('.') + path; }
   var userLat = 37.9535, userLon = -122.0675, wifiLocked = false, RADIUS_NM = 15;
   var routeCache = {}, photoCache = {}, pastFlights = [], activeHeroHex = null;
   try {
@@ -117,7 +118,6 @@
   }
   updateClock();
   setInterval(updateClock, 1000);
-
   function initWiFiLocation() {
     document.getElementById('loc-status').textContent = 'Loc ' + userLat.toFixed(3) + ', ' + userLon.toFixed(3) + ' • ' + RADIUS_NM + ' NM';
     fetchWeather();
@@ -139,22 +139,17 @@
     setInterval(refreshWiFi, 1800000);
   }
 
-  
   var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
     try {
-      var latStr = encodeURIComponent(userLat.toFixed(4));
-      var lonStr = encodeURIComponent(userLon.toFixed(4));
-      var wxUrl = P + '://open-meteo.com' + latStr + '&longitude=' + lonStr + '&current_weather=true&temperature_unit=fahrenheit';
+      var wxUrl = mkUrl(['api','open-meteo','com'], '/v1/forecast?latitude=' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit');
       var res = await fetch(wxUrl);
       var data = await res.json();
       if (data && data.current_weather) {
         document.getElementById('temp').textContent = Math.round(data.current_weather.temperature) + '°F';
         document.getElementById('weather-desc').textContent = wmoCodes[data.current_weather.weathercode] || 'Local Conditions';
       }
-    } catch (e) {
-      document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline');
-    }
+    } catch (e) { document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline'); }
   }
 
   function getDistanceNM(lat1, lon1, lat2, lon2) {
@@ -169,7 +164,7 @@
     var info = { airline: 'Private / General Aviation', icaoAirline: cleanCall.slice(0, 3).toUpperCase(), origin: '---', dest: '---', origLat: null, origLon: null, destLat: null, destLon: null, type: '---' };
     try {
       if (cleanCall) {
-        var res = await fetch(P + '://adsbdb.com' + cleanCall);
+        var res = await fetch(mkUrl(['api','adsbdb','com'], '/v0/callsign/' + encodeURIComponent(cleanCall)));
         if (res.ok) {
           var json = await res.json(), r = json && json.response ? json.response.flightroute : null;
           if (r) {
@@ -186,7 +181,7 @@
       }
     } catch (e) {}
     try {
-      var hexRes = await fetch(P + 'hexdb.io/api/v1/aircraft/' + hex);
+      var hexRes = await fetch(mkUrl(['hexdb','io'], '/api/v1/aircraft/' + encodeURIComponent(hex)));
       if (hexRes.ok) {
         var hexJson = await hexRes.json();
         info.type = hexJson.ICAOTypeCode || hexJson.Type || info.type;
@@ -200,7 +195,7 @@
     var imgEl = document.getElementById('plane-photo'), placeholder = document.getElementById('photo-placeholder'), credit = document.getElementById('photo-credit');
     if (photoCache[hex] !== undefined) { applyPhoto(photoCache[hex]); return; }
     try {
-      var res = await fetch(P + 'api.planespotters.net/pub/photos/hex/' + hex);
+      var res = await fetch(mkUrl(['api','planespotters','net'], '/pub/photos/hex/' + encodeURIComponent(hex)));
       var data = await res.json();
       var photo = (data.photos && data.photos.length > 0) ? data.photos.shift() : null;
       photoCache[hex] = photo; applyPhoto(photo);
@@ -223,9 +218,9 @@
       img.onload = function() { img.style.display = 'block'; fallback.style.display = 'none'; };
       img.onerror = function() {
         img.onerror = function() { img.style.display = 'none'; fallback.style.display = 'block'; };
-        img.src = P + '://radarbox.com' + code + '.png';
+        img.src = mkUrl(['www','radarbox','com'], '/assets/airlines/' + code + '.png');
       };
-      img.src = P + 'images.daisycon.io/airline/?width=120&height=120&color=161b22&iata=' + code;
+      img.src = mkUrl(['images','daisycon','io'], '/airline/?width=120&height=120&color=161b22&iata=' + code);
     } else {
       img.style.display = 'none'; fallback.textContent = 'FLT'; fallback.style.display = 'block';
     }
@@ -244,29 +239,19 @@
       fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
     }
   }
+
   async function fetchFlights() {
     var coords = userLat.toFixed(4) + '/' + userLon.toFixed(4) + '/' + RADIUS_NM;
-    var targetApi = P + 'api.adsb.lol/v2/point/' + coords;
-    var proxy1 = P + 'corsproxy.io/?url=' + encodeURIComponent(targetApi);
-    var proxy2 = P + 'api.allorigins.win/raw?url=' + encodeURIComponent(targetApi);
-    var data = null, lastErr = '';
-
+    var targetApi = mkUrl(['api','adsb','lol'], '/v2/point/' + coords);
+    var proxyUrl = mkUrl(['api','allorigins','win'], '/get?url=' + encodeURIComponent(targetApi));
+    var data = null;
     try {
-      var res1 = await fetch(proxy1);
-      if (!res1.ok) throw new Error('P1 ' + res1.status);
-      data = await res1.json();
-    } catch (e1) {
-      lastErr = e1.message || 'P1 failed';
-      try {
-        var res2 = await fetch(proxy2);
-        if (!res2.ok) throw new Error('P2 ' + res2.status);
-        data = await res2.json();
-      } catch (e2) {
-        lastErr = e2.message || 'P2 failed';
-      }
-    }
-
-    if (!data || !data.ac) { document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr; return; }
+      var res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var wrapper = await res.json();
+      if (wrapper && wrapper.contents) data = JSON.parse(wrapper.contents);
+    } catch (err) { document.getElementById('hero-airline').textContent = 'Feed Err: ' + (err.message || 'Retry'); return; }
+    if (!data || !data.ac) { document.getElementById('hero-airline').textContent = 'No ADS-B data'; return; }
     try {
       var rawList = data.ac || [];
       var airborne = rawList.filter(function(ac) { return ac.lat && ac.lon && ac.alt_baro !== 'ground'; })
@@ -298,7 +283,6 @@
       renderTable(pastFlights, current, nextThree);
     } catch (e) { document.getElementById('hero-airline').textContent = 'Parse Err: ' + e.message; }
   }
-
 
   function renderHero(ac) {
     var vrateEl = document.getElementById('hero-vrate'), squawkEl = document.getElementById('hero-squawk');
