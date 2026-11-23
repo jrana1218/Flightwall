@@ -138,9 +138,10 @@
     setInterval(refreshWiFi, 1800000);
   }
 
+    var P = 'https:' + '//';
   var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
-    var url1 = 'https://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit';
+    var url1 = P + '://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit';
     try {
       var res = await fetch(url1);
       var data = await res.json();
@@ -149,7 +150,11 @@
         document.getElementById('weather-desc').textContent = wmoCodes[data.current_weather.weathercode] || 'Local Conditions';
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline');
+    }
+  }
+
 
     try {
       var url2 = 'https://weather.gov' + userLat.toFixed(4) + ',' + userLon.toFixed(4);
@@ -167,7 +172,6 @@
     }
   }
 
-
   function getDistanceNM(lat1, lon1, lat2, lon2) {
     var R = 3440.065, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
     var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
@@ -180,7 +184,7 @@
     var info = { airline: 'Private / General Aviation', icaoAirline: cleanCall.slice(0, 3).toUpperCase(), origin: '---', dest: '---', origLat: null, origLon: null, destLat: null, destLon: null, type: '---' };
     try {
       if (cleanCall) {
-        var res = await fetch('https://adsbdb.com' + cleanCall);
+        var res = await fetch(P + '://adsbdb.com' + cleanCall);
         if (res.ok) {
           var json = await res.json(), r = json && json.response ? json.response.flightroute : null;
           if (r) {
@@ -197,7 +201,7 @@
       }
     } catch (e) {}
     try {
-      var hexRes = await fetch('https://hexdb.io' + hex);
+      var hexRes = await fetch(P + 'hexdb.io/api/v1/aircraft/' + hex);
       if (hexRes.ok) {
         var hexJson = await hexRes.json();
         info.type = hexJson.ICAOTypeCode || hexJson.Type || info.type;
@@ -207,11 +211,12 @@
     routeCache[cacheKey] = info;
     return info;
   }
+
   async function updateHeroPhoto(hex) {
     var imgEl = document.getElementById('plane-photo'), placeholder = document.getElementById('photo-placeholder'), credit = document.getElementById('photo-credit');
     if (photoCache[hex] !== undefined) { applyPhoto(photoCache[hex]); return; }
     try {
-      var res = await fetch('https://planespotters.net' + hex);
+      var res = await fetch(P + 'api.planespotters.net/pub/photos/hex/' + hex);
       var data = await res.json();
       var photo = (data.photos && data.photos.length > 0) ? data.photos.shift() : null;
       photoCache[hex] = photo; applyPhoto(photo);
@@ -234,32 +239,18 @@
       img.onload = function() { img.style.display = 'block'; fallback.style.display = 'none'; };
       img.onerror = function() {
         img.onerror = function() { img.style.display = 'none'; fallback.style.display = 'block'; };
-        img.src = 'https://radarbox.com' + code + '.png';
+        img.src = P + '://radarbox.com' + code + '.png';
       };
-      img.src = 'https://daisycon.io' + code;
+      img.src = P + 'images.daisycon.io/airline/?width=120&height=120&color=161b22&iata=' + code;
     } else {
       img.style.display = 'none'; fallback.textContent = 'FLT'; fallback.style.display = 'block';
     }
   }
 
-  function updateProgressBar(ac) {
-    var fill = document.getElementById('progress-fill'), plane = document.getElementById('progress-plane');
-    var elapsedEl = document.getElementById('progress-elapsed'), pctEl = document.getElementById('progress-pct'), remEl = document.getElementById('progress-rem');
-    if (ac && ac.origLat !== null && ac.destLat !== null && ac.lat && ac.lon) {
-      var flown = getDistanceNM(ac.origLat, ac.origLon, ac.lat, ac.lon);
-      var remaining = getDistanceNM(ac.lat, ac.lon, ac.destLat, ac.destLon);
-      var total = flown + remaining, pct = total > 0 ? Math.min(100, Math.max(0, (flown / total) * 100)) : 50;
-      fill.style.width = pct.toFixed(1) + '%'; plane.style.left = pct.toFixed(1) + '%';
-      elapsedEl.textContent = Math.round(flown).toLocaleString() + ' NM'; pctEl.textContent = Math.round(pct) + '%'; remEl.textContent = Math.round(remaining).toLocaleString() + ' NM';
-    } else {
-      fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
-    }
-  }
-
   async function fetchFlights() {
     var coords = userLat.toFixed(4) + '/' + userLon.toFixed(4) + '/' + RADIUS_NM;
-    var urlA = 'https://adsb.lol' + coords;
-    var urlB = 'https://airplanes.live' + coords;
+    var urlA = P + 'api.adsb.lol/v2/point/' + coords;
+    var urlB = P + 'api.airplanes.live/v2/point/' + coords;
     var data = null, lastErr = '';
 
     try {
@@ -312,6 +303,21 @@
       renderHero(current);
       renderTable(pastFlights, current, nextThree);
     } catch (e) { document.getElementById('hero-airline').textContent = 'Parse Err: ' + e.message; }
+  }
+
+
+  function updateProgressBar(ac) {
+    var fill = document.getElementById('progress-fill'), plane = document.getElementById('progress-plane');
+    var elapsedEl = document.getElementById('progress-elapsed'), pctEl = document.getElementById('progress-pct'), remEl = document.getElementById('progress-rem');
+    if (ac && ac.origLat !== null && ac.destLat !== null && ac.lat && ac.lon) {
+      var flown = getDistanceNM(ac.origLat, ac.origLon, ac.lat, ac.lon);
+      var remaining = getDistanceNM(ac.lat, ac.lon, ac.destLat, ac.destLon);
+      var total = flown + remaining, pct = total > 0 ? Math.min(100, Math.max(0, (flown / total) * 100)) : 50;
+      fill.style.width = pct.toFixed(1) + '%'; plane.style.left = pct.toFixed(1) + '%';
+      elapsedEl.textContent = Math.round(flown).toLocaleString() + ' NM'; pctEl.textContent = Math.round(pct) + '%'; remEl.textContent = Math.round(remaining).toLocaleString() + ' NM';
+    } else {
+      fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
+    }
   }
 
 
