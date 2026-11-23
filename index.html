@@ -101,7 +101,7 @@
     </table>
   </div>
 </div>
-<script>
+script>
   var P = 'https:' + '//';
   var userLat = 37.9535, userLon = -122.0675, wifiLocked = false, RADIUS_NM = 15;
   var routeCache = {}, photoCache = {}, pastFlights = [], activeHeroHex = null;
@@ -238,22 +238,28 @@
       fill.style.width = '50%'; plane.style.left = '50%'; elapsedEl.textContent = 'En route'; pctEl.textContent = '---'; remEl.textContent = 'Est. N/A';
     }
   }
-
   async function fetchFlights() {
     var coords = userLat.toFixed(4) + '/' + userLon.toFixed(4) + '/' + RADIUS_NM;
+    var targetApi = P + 'api.adsb.lol/v2/point/' + coords;
+    var proxy1 = P + 'corsproxy.io/?url=' + encodeURIComponent(targetApi);
+    var proxy2 = P + 'api.allorigins.win/raw?url=' + encodeURIComponent(targetApi);
     var data = null, lastErr = '';
+
     try {
-      var resA = await fetch(P + 'api.adsb.lol/v2/point/' + coords);
-      if (!resA.ok) throw new Error('HTTP ' + resA.status);
-      data = await resA.json();
-    } catch (errA) {
-      lastErr = errA.message || 'A failed';
+      var res1 = await fetch(proxy1);
+      if (!res1.ok) throw new Error('P1 ' + res1.status);
+      data = await res1.json();
+    } catch (e1) {
+      lastErr = e1.message || 'P1 failed';
       try {
-        var resB = await fetch(P + 'api.airplanes.live/v2/point/' + coords);
-        if (!resB.ok) throw new Error('HTTP ' + resB.status);
-        data = await resB.json();
-      } catch (errB) { lastErr = errB.message || 'B failed'; }
+        var res2 = await fetch(proxy2);
+        if (!res2.ok) throw new Error('P2 ' + res2.status);
+        data = await res2.json();
+      } catch (e2) {
+        lastErr = e2.message || 'P2 failed';
+      }
     }
+
     if (!data || !data.ac) { document.getElementById('hero-airline').textContent = 'Feed Err: ' + lastErr; return; }
     try {
       var rawList = data.ac || [];
@@ -286,6 +292,7 @@
       renderTable(pastFlights, current, nextThree);
     } catch (e) { document.getElementById('hero-airline').textContent = 'Parse Err: ' + e.message; }
   }
+
 
   function renderHero(ac) {
     var vrateEl = document.getElementById('hero-vrate'), squawkEl = document.getElementById('hero-squawk');
