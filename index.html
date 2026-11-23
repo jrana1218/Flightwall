@@ -139,16 +139,22 @@
     setInterval(refreshWiFi, 1800000);
   }
 
+  
   var wmoCodes = { 0:'Clear Sky', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast', 45:'Fog', 48:'Rime Fog', 51:'Light Drizzle', 53:'Drizzle', 61:'Light Rain', 63:'Rain', 65:'Heavy Rain', 71:'Snow', 80:'Rain Showers', 95:'Thunderstorm' };
   async function fetchWeather() {
     try {
-      var res = await fetch(P + '://open-meteo.com' + userLat.toFixed(4) + '&longitude=' + userLon.toFixed(4) + '&current_weather=true&temperature_unit=fahrenheit');
+      var latStr = encodeURIComponent(userLat.toFixed(4));
+      var lonStr = encodeURIComponent(userLon.toFixed(4));
+      var wxUrl = P + '://open-meteo.com' + latStr + '&longitude=' + lonStr + '&current_weather=true&temperature_unit=fahrenheit';
+      var res = await fetch(wxUrl);
       var data = await res.json();
       if (data && data.current_weather) {
         document.getElementById('temp').textContent = Math.round(data.current_weather.temperature) + '°F';
         document.getElementById('weather-desc').textContent = wmoCodes[data.current_weather.weathercode] || 'Local Conditions';
       }
-    } catch (e) { document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline'); }
+    } catch (e) {
+      document.getElementById('weather-desc').textContent = 'Wx: ' + (e.message || 'Offline');
+    }
   }
 
   function getDistanceNM(lat1, lon1, lat2, lon2) {
